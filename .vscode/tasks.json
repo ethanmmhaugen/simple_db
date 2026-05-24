@@ -21,7 +21,8 @@
                 "/Fe${fileDirname}\\build\\${fileBasenameNoExtension}.exe",
                 "/Fo${fileDirname}\\build\\",
                 "/Fd${fileDirname}\\build\\",
-                "${file}"
+                "${file}",
+                "${fileDirname}\\custom_get_line.c"
             ],
             "options": {
                 "cwd": "${fileDirname}"
