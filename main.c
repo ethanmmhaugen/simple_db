@@ -19,36 +19,42 @@ InputBuffer* new_input_buffer() {
 }
 
 void print_prompt() {
-    return printf("db > ");
+    printf("db > ");
 }
 
+ptrdiff_t custom_get_line(char** input_buffer, size_t* size, FILE* stream);
+
 void read_input(InputBuffer* input_buffer) {
-    ptrdiff_t bytes_read = getline(&(input_buffer->buffer), &(input_buffer->buffer_size), stdin);
+    ptrdiff_t bytes_read = custom_get_line(&(input_buffer->buffer), &(input_buffer->buffer_size), stdin);
 
     if(bytes_read <= 0) {
         printf("Error reading input\n");
-        EXIT(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     } else {
         input_buffer->input_size = bytes_read-1;
         input_buffer->buffer[bytes_read-1] = 0;
     }
 }
 
+void close_input_buffer(InputBuffer* input_buffer) {
+    free(input_buffer->buffer);
+    free(input_buffer);
+}
 
 int main(int argc, char* argv[]) {
-    InputBuffer* input_buffer = new_input_buffer();
+    // InputBuffer* input_buffer = new_input_buffer();
 
-    while(true) {
-        print_prompt();
-        get_input(input_buffer);
+    // while(true) {
+    //     print_prompt();
+    //     read_input(input_buffer);
 
-        if(strcmp(input_buffer->buffer, ".exit") == 0) {
-            close_input_buffer(input_buffer);
-            exit(EXIT_SUCCESS);
-        } else {
-            printf("Unrecognized Command, '%s' .\n", input_buffer->buffer);
-        }
-    }
-      
+    //     if(strcmp(input_buffer->buffer, ".exit") == 0) {
+    //         close_input_buffer(input_buffer);
+    //         exit(EXIT_SUCCESS);
+    //     } else {
+    //         printf("Unrecognized Command, '%s' .\n", input_buffer->buffer);
+    //     }
+    // }
+
     return 0;
 }
