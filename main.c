@@ -78,6 +78,15 @@ PrepareResult prepare_statement(InputBuffer* input_buffer, Statement* statement)
     return PREPARE_UNRECOGNIZED_STATEMENT;
 }
 
+void execute_statement(Statement* statement) {
+    if(statement->type == STATEMENT_INSERT) {
+        printf("Executing insert statement.\n");
+    }
+    if(statement-> type == STATEMENT_SELECT) {
+        printf("Executing select statement.\n");
+    }
+}
+
 int main(int argc, char* argv[]) {
     InputBuffer* input_buffer = new_input_buffer();
 
