@@ -21,33 +21,7 @@
 #define ROWS_PER_PAGE   (PAGE_SIZE / ROW_SIZE)
 #define TABLE_MAX_ROWS  (ROWS_PER_PAGE * TABLE_MAX_PAGES)
 
-typedef struct {
-  uint32_t num_rows;
-  void* pages[TABLE_MAX_PAGES];
-} Table;
-
-typedef enum { 
-    STATEMENT_INSERT,
-    STATEMENT_SELECT
-} StatementType;
-
-typedef enum { 
-    EXECUTE_SUCCESS, 
-    EXECUTE_TABLE_FULL,
-    EXECUTE_UNKNOWN_ERROR
-} ExecuteResult;
-
-typedef struct {
-  uint32_t id;
-  char username[COLUMN_USERNAME_SIZE + 1];
-  char email[COLUMN_EMAIL_SIZE + 1];
-} Row;
-
-typedef struct {
-  StatementType type;
-  Row row_to_insert;
-} Statement;
-
+// Result enums
 typedef enum {
   META_COMMAND_SUCCESS,
   META_COMMAND_UNRECOGNIZED_COMMAND
@@ -61,12 +35,68 @@ typedef enum {
     PREPARE_STRING_TOO_LONG
 } PrepareResult;
 
+typedef enum { 
+    EXECUTE_SUCCESS, 
+    EXECUTE_TABLE_FULL,
+    EXECUTE_UNKNOWN_ERROR
+} ExecuteResult;
+
+typedef enum { 
+    STATEMENT_INSERT,
+    STATEMENT_SELECT
+} StatementType;
+
+// Table structs
+typedef struct {
+  uint32_t id;
+  char username[COLUMN_USERNAME_SIZE + 1];
+  char email[COLUMN_EMAIL_SIZE + 1];
+} Row;
+
+typedef struct {
+  uint32_t num_rows;
+  void* pages[TABLE_MAX_PAGES];
+} Table;
+
+// Statement Struct
+typedef struct {
+  StatementType type;
+  Row row_to_insert;
+} Statement;
+
+// Buffer struct
 typedef struct {
     char* buffer;
     size_t buffer_size;
     ptrdiff_t input_size;
 } InputBuffer;
 
+// Misc functions
+void print_prompt() {
+    printf("db > ");
+}
+ptrdiff_t custom_get_line(char** input_buffer, size_t* size, FILE* stream);
+
+//Table
+Table* new_table() {
+    Table* table = (Table*)malloc(sizeof(Table));
+    table->num_rows = 0;
+    
+    for(uint32_t i = 0; i<TABLE_MAX_PAGES; i++) {
+        table->pages[i] = NULL;
+    }
+
+    return table;
+}
+
+void free_table(Table* table) {
+    for(uint32_t i = 0; table->pages[i]; i++) {
+        free(table->pages[i]);
+    }
+    free(table);
+}
+
+// Table serialization / deserialization functions
 void serialize_row(Row* source, void* destination) {
     memcpy((char*)destination + ID_OFFSET, &(source->id), ID_SIZE);
     memcpy((char*)destination + USERNAME_OFFSET, &(source->username), USERNAME_SIZE);
@@ -92,6 +122,7 @@ void* row_slot(Table* table, uint32_t row_num) {
     return (char*)page + byte_offset;
 }
 
+// Buffer functions
 InputBuffer* new_input_buffer() {
     InputBuffer* input_buffer = (InputBuffer*)malloc(sizeof(InputBuffer));
     input_buffer->buffer = NULL;
@@ -100,12 +131,6 @@ InputBuffer* new_input_buffer() {
 
     return input_buffer;
 }
-
-void print_prompt() {
-    printf("db > ");
-}
-
-ptrdiff_t custom_get_line(char** input_buffer, size_t* size, FILE* stream);
 
 void read_input(InputBuffer* input_buffer) {
     ptrdiff_t bytes_read = custom_get_line(&(input_buffer->buffer), &(input_buffer->buffer_size), stdin);
@@ -124,6 +149,7 @@ void close_input_buffer(InputBuffer* input_buffer) {
     free(input_buffer);
 }
 
+// Prepare step functions
 MetaCommandResult do_meta_command(InputBuffer* input_buffer) {
     if(strcmp(input_buffer->buffer, ".exit") == 0) {
         exit(EXIT_SUCCESS);
@@ -171,6 +197,7 @@ PrepareResult prepare_statement(InputBuffer* input_buffer, Statement* statement)
     return PREPARE_UNRECOGNIZED_STATEMENT;
 }
 
+// Execute step functions
 ExecuteResult execute_insert(Statement* statement, Table* table) {
     if(table->num_rows >= TABLE_MAX_ROWS) {
         return EXECUTE_TABLE_FULL;
@@ -205,24 +232,7 @@ ExecuteResult execute_statement(Statement* statement, Table* table) {
     }
 }
 
-Table* new_table() {
-    Table* table = (Table*)malloc(sizeof(Table));
-    table->num_rows = 0;
-    
-    for(uint32_t i = 0; i<TABLE_MAX_PAGES; i++) {
-        table->pages[i] = NULL;
-    }
-
-    return table;
-}
-
-void free_table(Table* table) {
-    for(uint32_t i = 0; table->pages[i]; i++) {
-        free(table->pages[i]);
-    }
-    free(table);
-}
-
+// Main
 int main(int argc, char* argv[]) {
     InputBuffer* input_buffer = new_input_buffer();
     Table* table = new_table();
@@ -271,6 +281,5 @@ int main(int argc, char* argv[]) {
                 break;
         }
     }
-
     return 0;
 }
