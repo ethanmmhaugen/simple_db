@@ -71,6 +71,19 @@ void deserialize_row(void* source, Row* destination) {
     memcpy(&(destination->email), (char*)source + EMAIL_OFFSET, EMAIL_SIZE);
 }
 
+void* row_slot(Table* table, uint32_t row_num) {
+    uint32_t page_num = row_num / ROWS_PER_PAGE;
+    void* page = table->pages[page_num];
+
+    if (page == NULL) {
+        page = table->pages[page_num] = malloc(PAGE_SIZE);
+    }
+
+    uint32_t row_offset = row_num % ROWS_PER_PAGE;
+    uint32_t byte_offset = row_offset * ROW_SIZE;
+    return (char*)page + byte_offset;
+}
+
 InputBuffer* new_input_buffer() {
     InputBuffer* input_buffer = (InputBuffer*)malloc(sizeof(InputBuffer));
     input_buffer->buffer = NULL;
@@ -131,13 +144,54 @@ PrepareResult prepare_statement(InputBuffer* input_buffer, Statement* statement)
     return PREPARE_UNRECOGNIZED_STATEMENT;
 }
 
-void execute_statement(Statement* statement) {
-    if(statement->type == STATEMENT_INSERT) {
-        printf("Executing insert statement.\n");
+ExecuteResult execute_insert(Statement* statement, Table* table) {
+    if(table->num_rows > TABLE_MAX_ROWS) {
+        return EXECUTE_TABLE_FULL;
     }
-    if(statement-> type == STATEMENT_SELECT) {
-        printf("Executing select statement.\n");
+
+    Row* row_to_insert = &(statement->row_to_insert);
+
+    serialize_row(row_to_insert, row_slot(table, table->num_rows));
+    table-> num_rows += 1;
+
+    return EXECUTE_SUCCESS;
+}
+
+ExecuteResult execute_select(Statement* statement, Table* table) {
+    Row row;
+    for(uint32_t i = 0; i < table->num_rows; i++) {
+        deserialize_row(row_slot(table, i), &row);
+        print(&row);
     }
+
+    return EXECUTE_SUCCESS;
+}
+
+ExecuteResult execute_statement(Statement* statement, Table* table) {
+    switch (statement->type){
+        case (STATEMENT_INSERT):
+            return execute_insert(statement, table);
+        case (STATEMENT_SELECT):
+            return execute_select(statement, table);
+    }
+}
+
+Table* new_table() {
+    Table* table = (Table*)malloc(sizeof(Table));
+    table->num_rows = 0;
+    
+    for(uint32_t i = 0; i<TABLE_MAX_PAGES; i++) {
+        table->pages[i] = NULL;
+    }
+
+    return table;
+}
+
+void free_table(Table* table) {
+    for(uint32_t i = 0; table->pages[i]; i++) {
+        free(table->pages[i]);
+    }
+    free(table);
 }
 
 int main(int argc, char* argv[]) {
@@ -169,7 +223,7 @@ int main(int argc, char* argv[]) {
                 continue;
         }
 
-        execute_statement(&statement);
+        execute_statement(&statement, table);
         printf("Executed.\n");
     }
 
