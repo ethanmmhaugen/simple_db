@@ -31,6 +31,12 @@ typedef enum {
     STATEMENT_SELECT
 } StatementType;
 
+typedef enum { 
+    EXECUTE_SUCCESS, 
+    EXECUTE_TABLE_FULL,
+    EXECUTE_UNKNOWN_ERROR
+} ExecuteResult;
+
 typedef struct {
   uint32_t id;
   char username[COLUMN_USERNAME_SIZE];
@@ -161,7 +167,7 @@ ExecuteResult execute_select(Statement* statement, Table* table) {
     Row row;
     for(uint32_t i = 0; i < table->num_rows; i++) {
         deserialize_row(row_slot(table, i), &row);
-        print(&row);
+        printf("(%d, %s, %s)\n", row.id, row.username, row.email);
     }
 
     return EXECUTE_SUCCESS;
@@ -173,6 +179,8 @@ ExecuteResult execute_statement(Statement* statement, Table* table) {
             return execute_insert(statement, table);
         case (STATEMENT_SELECT):
             return execute_select(statement, table);
+        default:
+            return EXECUTE_UNKNOWN_ERROR;
     }
 }
 
@@ -196,6 +204,7 @@ void free_table(Table* table) {
 
 int main(int argc, char* argv[]) {
     InputBuffer* input_buffer = new_input_buffer();
+    Table* table = new_table();
 
     while(true) {
         print_prompt();
@@ -223,8 +232,17 @@ int main(int argc, char* argv[]) {
                 continue;
         }
 
-        execute_statement(&statement, table);
-        printf("Executed.\n");
+        switch(execute_statement(&statement, table)) {
+            case(EXECUTE_SUCCESS):
+                printf("Executed Successfully.\n");
+                break;
+            case(EXECUTE_TABLE_FULL):
+                printf("Error. Table Full.\n");
+                break;
+            case(EXECUTE_UNKNOWN_ERROR):
+                printf("Unknown Error has Occured");
+                break;
+        }
     }
 
     return 0;
