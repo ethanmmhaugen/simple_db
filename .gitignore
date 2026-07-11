@@ -34,3 +34,6 @@ $RECYCLE.BIN/
 
 # macOS junk (if you ever open this on a Mac)
 .DS_Store
+
+# db
+*.db
